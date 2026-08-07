@@ -1,5 +1,5 @@
 {
-  "domain": "votronic_S_BC",
+  "domain": "votronic",
   "name": "Votronic Energy Monitor",
   "bluetooth": [
     {
@@ -11,7 +11,7 @@
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/guwo65/votronic_S_BC.git",
+  "documentation": "https://github.com/guwo65/votronic.git",
   "iot_class": "local_polling",
   "requirements": [],
   "version": "0.1.0"
