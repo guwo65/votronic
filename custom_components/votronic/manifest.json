@@ -1,15 +1,20 @@
 {
   "domain": "votronic",
   "name": "Votronic",
-  "version": "0.3.8",
-  "documentation": "https://github.com/guwo65/votronic",
-  "requirements": [],
-  "dependencies": [],
-  "codeowners": [],
+  "version": "0.2.0",
   "config_flow": true,
+  "iot_class": "local_polling",
+  "dependencies": [
+    "bluetooth",
+    "bluetooth_adapters"
+  ],
   "bluetooth": [
     {
-      "service_uuid": "d0cb6aa7-8548-46d0-99f8-2d02611e5270"
+      "service_uuid": "d0cb6aa7-8548-46d0-99f8-2d02611e5270",
+      "connectable": true
     }
-  ]
+  ],
+  "requirements": []
+  "documentation": "https://github.com/guwo65/votronic",
+  "codeowners": [],
 }
