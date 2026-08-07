@@ -1,4 +1,4 @@
-DOMAIN = "votronic"
+DOMAIN = "votronic_S_BC"
 
 SERVICE_UUID = "d0cb6aa7-8548-46d0-99f8-2d02611e5270"
 
