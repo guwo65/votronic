@@ -6,7 +6,7 @@ guwo65/votronic/ (Hauptverzeichnis)
 ├── hacs.json
 ├── README.md
 └── custom_components/
-    ├── votronic
+    ├── votronic/
         ├── __init__.py
         ├── manifest.js
         ├── const.py
