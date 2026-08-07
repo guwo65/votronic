@@ -1,0 +1,18 @@
+{
+  "domain": "votronic",
+  "name": "Votronic Energy Monitor",
+  "bluetooth": [
+    {
+      "service_uuid": "d0cb6aa7-8548-46d0-99f8-2d02611e5270"
+    }
+  ],
+  "codeowners": [
+    "@guwo65"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/votronic-S-BC/votronic",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "version": "0.1.0"
+}
