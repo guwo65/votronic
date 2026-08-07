@@ -12,7 +12,5 @@ guwo65/votronic/ (Hauptverzeichnis)
         ├── manifest.json
         ├── const.py
         ├── config_flow.py
-        ├── coordinator.py
-        ├── bluetooth.py
         ├── sensor.py
        
