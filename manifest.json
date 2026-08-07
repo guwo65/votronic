@@ -11,7 +11,7 @@
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/guwo65/votronic-S-BC/",
+  "documentation": "https://github.com/guwo65/votronic-S-BC.git",
   "iot_class": "local_polling",
   "requirements": [],
   "version": "0.1.0"
