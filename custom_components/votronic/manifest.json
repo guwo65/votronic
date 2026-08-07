@@ -5,6 +5,6 @@
   "documentation": "https://github.com/guwo65/votronic",
   "requirements": [],
   "dependencies": [],
-  "codeowners": []
+  "codeowners": [],
   "config_flow": true,
 }
