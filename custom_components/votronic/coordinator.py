@@ -4,8 +4,10 @@ import logging
 from datetime import timedelta
 
 from bleak.exc import BleakError
-from bleak_retry_connector import establish_connection
-
+from bleak_retry_connector import (
+    BleakClientWithServiceCache,
+    establish_connection,
+)
 from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -70,12 +72,11 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
             )
 
             client = await establish_connection(
-                client_class=None,
-                device=ble_device,
+                BleakClientWithServiceCache,
+                ble_device,
                 name=f"Votronic {self.address}",
                 disconnected_callback=None,
             )
-
             _LOGGER.debug(
                 "Connected to Votronic device %s",
                 self.address,
