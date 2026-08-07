@@ -1,7 +1,7 @@
 {
   "domain": "votronic",
   "name": "Votronic Energy Monitor",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "documentation": "https://github.com/guwo65/votronic",
   "requirements": [],
   "dependencies": [],
