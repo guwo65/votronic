@@ -27,6 +27,8 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+NOTIFY_WAIT_SECONDS = 8
+
 
 class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
     """Fetch raw data from a Votronic Bluetooth connector."""
@@ -49,7 +51,7 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
         )
 
     async def _async_update_data(self) -> dict[str, str | None]:
-        """Connect to Votronic and read raw characteristics."""
+        """Connect to Votronic and receive notifications."""
 
         ble_device = bluetooth.async_ble_device_from_address(
             self.hass,
@@ -63,6 +65,44 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
             )
 
         client = None
+
+        result: dict[str, str | None] = {
+            "main": None,
+            "solar": None,
+        }
+
+        main_event = asyncio.Event()
+        solar_event = asyncio.Event()
+
+        def main_callback(sender, data: bytearray) -> None:
+            """Handle MAIN notification."""
+
+            hex_data = bytes(data).hex(" ").upper()
+
+            result["main"] = hex_data
+
+            _LOGGER.info(
+                "VOTRONIC NOTIFY MAIN [%s]: %s",
+                CHAR_MAIN,
+                hex_data,
+            )
+
+            main_event.set()
+
+        def solar_callback(sender, data: bytearray) -> None:
+            """Handle SOLAR notification."""
+
+            hex_data = bytes(data).hex(" ").upper()
+
+            result["solar"] = hex_data
+
+            _LOGGER.info(
+                "VOTRONIC NOTIFY SOLAR [%s]: %s",
+                CHAR_SOLAR,
+                hex_data,
+            )
+
+            solar_event.set()
 
         try:
             _LOGGER.debug(
@@ -82,19 +122,38 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
                 self.address,
             )
 
-            result: dict[str, str | None] = {}
+            _LOGGER.debug(
+                "Starting Votronic MAIN notifications"
+            )
 
-            result["main"] = await self._read_characteristic(
-                client,
+            await client.start_notify(
                 CHAR_MAIN,
-                "MAIN",
+                main_callback,
             )
 
-            result["solar"] = await self._read_characteristic(
-                client,
-                CHAR_SOLAR,
-                "SOLAR",
+            _LOGGER.debug(
+                "Starting Votronic SOLAR notifications"
             )
+
+            await client.start_notify(
+                CHAR_SOLAR,
+                solar_callback,
+            )
+
+            try:
+                async with asyncio.timeout(NOTIFY_WAIT_SECONDS):
+                    await asyncio.gather(
+                        main_event.wait(),
+                        solar_event.wait(),
+                    )
+
+            except TimeoutError:
+                _LOGGER.warning(
+                    "Timeout waiting for Votronic notifications "
+                    "(MAIN received=%s, SOLAR received=%s)",
+                    main_event.is_set(),
+                    solar_event.is_set(),
+                )
 
             return result
 
@@ -104,8 +163,6 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
             ) from err
 
         except asyncio.CancelledError:
-            # Wichtig: CancelledError niemals in einen normalen
-            # UpdateFailed-Fehler umwandeln.
             raise
 
         except Exception as err:
@@ -117,6 +174,23 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
             if client is not None:
                 try:
                     if client.is_connected:
+
+                        try:
+                            await client.stop_notify(CHAR_MAIN)
+                        except Exception:
+                            _LOGGER.debug(
+                                "Could not stop MAIN notification",
+                                exc_info=True,
+                            )
+
+                        try:
+                            await client.stop_notify(CHAR_SOLAR)
+                        except Exception:
+                            _LOGGER.debug(
+                                "Could not stop SOLAR notification",
+                                exc_info=True,
+                            )
+
                         await client.disconnect()
 
                         _LOGGER.debug(
@@ -130,46 +204,4 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
                         self.address,
                         exc_info=True,
                     )
-
-    async def _read_characteristic(
-        self,
-        client,
-        uuid: str,
-        label: str,
-    ) -> str | None:
-        """Read one GATT characteristic with a timeout."""
-
-        try:
-            async with asyncio.timeout(5):
-                raw = await client.read_gatt_char(uuid)
-
-        except TimeoutError:
-            _LOGGER.warning(
-                "Timeout reading Votronic %s characteristic %s",
-                label,
-                uuid,
-            )
-            return None
-
-        except asyncio.CancelledError:
-            raise
-
-        except Exception as err:
-            _LOGGER.warning(
-                "Unable to read Votronic %s characteristic %s: %s",
-                label,
-                uuid,
-                err,
-            )
-            return None
-
-        hex_data = bytes(raw).hex(" ").upper()
-
-        _LOGGER.info(
-            "VOTRONIC RAW %-8s [%s]: %s",
-            label,
-            uuid,
-            hex_data,
-        )
-
-        return hex_data
+                    
