@@ -149,7 +149,7 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
                 "Connected to Votronic device %s",
                 self.address,
             )
-
+            self._log_gatt_structure(client) 
             _LOGGER.debug(
                 "Starting Votronic MAIN notifications"
             )
