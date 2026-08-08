@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import asyncio
 import logging
 from datetime import timedelta
 
@@ -96,24 +96,6 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
                 "SOLAR",
             )
 
-            result["unknown"] = await self._read_characteristic(
-                client,
-                CHAR_UNKNOWN,
-                "UNKNOWN",
-            )
-
-            result["bonding"] = await self._read_characteristic(
-                client,
-                CHAR_BONDING,
-                "BONDING",
-            )
-
-            result["firmware"] = await self._read_characteristic(
-                client,
-                CHAR_FIRMWARE,
-                "FIRMWARE",
-            )
-
             return result
 
         except BleakError as err:
@@ -142,34 +124,44 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
                         exc_info=True,
                     )
 
-    async def _read_characteristic(
-        self,
-        client,
-        uuid: str,
-        label: str,
-    ) -> str | None:
-        """Read one GATT characteristic and return a hex string."""
 
-        try:
+    async def _read_characteristic(
+    self,
+    client,
+    uuid: str,
+    label: str,
+) -> str | None:
+    """Read one GATT characteristic with a timeout."""
+
+    try:
+        async with asyncio.timeout(5):
             raw = await client.read_gatt_char(uuid)
 
-        except Exception as err:
-            _LOGGER.debug(
-                "Unable to read %s characteristic %s: %s",
-                label,
-                uuid,
-                err,
-            )
-            return None
-
-        hex_data = bytes(raw).hex(" ").upper()
-
-        _LOGGER.info(
-            "VOTRONIC RAW %-8s [%s]: %s",
+    except TimeoutError:
+        _LOGGER.warning(
+            "Timeout reading Votronic %s characteristic %s",
             label,
             uuid,
-            hex_data,
         )
+        return None
 
-        return hex_data
-      
+    except Exception as err:
+        _LOGGER.warning(
+            "Unable to read Votronic %s characteristic %s: %s",
+            label,
+            uuid,
+            err,
+        )
+        return None
+
+    hex_data = bytes(raw).hex(" ").upper()
+
+    _LOGGER.info(
+        "VOTRONIC RAW %-8s [%s]: %s",
+        label,
+        uuid,
+        hex_data,
+    )
+
+    return hex_data
+   
