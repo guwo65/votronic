@@ -49,7 +49,35 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
             name=f"{DOMAIN}_{self.address}",
             update_interval=timedelta(seconds=SCAN_INTERVAL),
         )
-
+    def _log_gatt_structure(self, client) -> None:
+        """Log all discovered GATT services and characteristics."""
+    
+        _LOGGER.warning("===== VOTRONIC GATT STRUCTURE START =====")
+    
+        for service in client.services:
+            _LOGGER.warning(
+                "SERVICE %s",
+                service.uuid,
+            )
+    
+            for characteristic in service.characteristics:
+                properties = ", ".join(characteristic.properties)
+    
+                _LOGGER.warning(
+                    "  CHAR %s | properties=[%s] | handle=%s",
+                    characteristic.uuid,
+                    properties,
+                    characteristic.handle,
+                )
+    
+                for descriptor in characteristic.descriptors:
+                    _LOGGER.warning(
+                        "    DESCRIPTOR %s | handle=%s",
+                        descriptor.uuid,
+                        descriptor.handle,
+                    )
+    
+        _LOGGER.warning("===== VOTRONIC GATT STRUCTURE END =====") 
     async def _async_update_data(self) -> dict[str, str | None]:
         """Connect to Votronic and receive notifications."""
 
