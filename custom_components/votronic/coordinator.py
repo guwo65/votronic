@@ -1,6 +1,6 @@
-import asyncio
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 
@@ -9,6 +9,7 @@ from bleak_retry_connector import (
     BleakClientWithServiceCache,
     establish_connection,
 )
+
 from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -18,11 +19,8 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .const import (
-    CHAR_BONDING,
-    CHAR_FIRMWARE,
     CHAR_MAIN,
     CHAR_SOLAR,
-    CHAR_UNKNOWN,
     DOMAIN,
     SCAN_INTERVAL,
 )
@@ -51,7 +49,7 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
         )
 
     async def _async_update_data(self) -> dict[str, str | None]:
-        """Connect to the Votronic device and read raw characteristics."""
+        """Connect to Votronic and read raw characteristics."""
 
         ble_device = bluetooth.async_ble_device_from_address(
             self.hass,
@@ -78,6 +76,7 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
                 name=f"Votronic {self.address}",
                 disconnected_callback=None,
             )
+
             _LOGGER.debug(
                 "Connected to Votronic device %s",
                 self.address,
@@ -104,6 +103,11 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
                 f"Bluetooth communication failed: {err}"
             ) from err
 
+        except asyncio.CancelledError:
+            # Wichtig: CancelledError niemals in einen normalen
+            # UpdateFailed-Fehler umwandeln.
+            raise
+
         except Exception as err:
             raise UpdateFailed(
                 f"Unexpected Votronic error: {err}"
@@ -114,17 +118,18 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
                 try:
                     if client.is_connected:
                         await client.disconnect()
+
                         _LOGGER.debug(
                             "Disconnected from Votronic device %s",
                             self.address,
                         )
+
                 except Exception:
                     _LOGGER.debug(
                         "Error while disconnecting from %s",
                         self.address,
                         exc_info=True,
                     )
-
 
     async def _read_characteristic(
         self,
@@ -133,11 +138,11 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
         label: str,
     ) -> str | None:
         """Read one GATT characteristic with a timeout."""
-    
+
         try:
             async with asyncio.timeout(5):
                 raw = await client.read_gatt_char(uuid)
-    
+
         except TimeoutError:
             _LOGGER.warning(
                 "Timeout reading Votronic %s characteristic %s",
@@ -145,7 +150,10 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
                 uuid,
             )
             return None
-    
+
+        except asyncio.CancelledError:
+            raise
+
         except Exception as err:
             _LOGGER.warning(
                 "Unable to read Votronic %s characteristic %s: %s",
@@ -154,15 +162,14 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, str | None]]):
                 err,
             )
             return None
-    
+
         hex_data = bytes(raw).hex(" ").upper()
-    
+
         _LOGGER.info(
             "VOTRONIC RAW %-8s [%s]: %s",
             label,
             uuid,
             hex_data,
         )
-    
+
         return hex_data
-       
