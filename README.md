@@ -3,6 +3,8 @@ HA-Integration für den Votronic Bluetooth Connector S-BC
 
 In Bearbeitung —  funktionsfähig.
 
+Download in HACS: guwo65/votronic
+
 Da dein Connector noch nicht gekoppelt ist, muss in coordinator.py stehen:
 
 PAIR_ON_NEXT_CONNECTION = True
