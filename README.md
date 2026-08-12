@@ -1,7 +1,7 @@
 # votronic
 HA-Integration für den Votronic Bluetooth Connector S-BC
 
-In Bearbeitung —  funktionsfähig.
+In Bearbeitung —  funktionsfähig - Sensorwertzuordnungen müssen im laufenden Betrieb noch überprüft werden.
 
 Download in HACS: guwo65/votronic
 
