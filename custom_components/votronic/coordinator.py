@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import timedelta
 from typing import Any
 
@@ -12,6 +13,7 @@ from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.storage import Store
 
 from .bluez_agent import BlueZAgentRegistration
 from .const import DOMAIN, SCAN_INTERVAL
@@ -29,6 +31,9 @@ PAIR_TIMEOUT_SECONDS = 20
 # on the SC-Connector. Set it back to False after pairing succeeds.
 PAIR_ON_NEXT_CONNECTION = False
 
+STORAGE_VERSION = 1
+MAX_INTEGRATION_GAP_SECONDS = 60
+
 
 def _uint16_le(data: bytes, offset: int) -> int:
     return int.from_bytes(data[offset : offset + 2], "little", signed=False)
@@ -43,13 +48,21 @@ def _decode_main(data: bytes) -> dict[str, Any]:
     if len(data) < 20:
         raise ValueError(f"MAIN packet is too short: {len(data)} bytes")
 
+    # Bytes 13/14 contain the configured maximum battery capacity in 0.1 Ah.
+    nominal_capacity = _uint16_le(data, 13) / 10
+    state_of_charge = data[8]
+
     return {
         "battery_voltage": _uint16_le(data, 0) / 100,
         "starter_voltage": _uint16_le(data, 2) / 100,
-        "battery_nominal_capacity": _uint16_le(data, 4),
-        "battery_soc": data[8],
+        "battery_nominal_capacity": nominal_capacity,
+        "battery_soc": state_of_charge,
         "battery_current": _int24_le(data, 10) / 1000,
-        "battery_remaining_capacity": _uint16_le(data, 13) / 10,
+        # The packet contains the configured nominal capacity, not a directly
+        # reported remaining capacity. Derive the latter from the displayed SoC.
+        "battery_remaining_capacity": round(
+            nominal_capacity * state_of_charge / 100, 1
+        ),
         "main_raw": data.hex(" ").upper(),
     }
 
@@ -59,17 +72,17 @@ def _decode_solar(data: bytes) -> dict[str, Any]:
     if len(data) < 19:
         raise ValueError(f"SOLAR packet is too short: {len(data)} bytes")
 
-    voltage = _uint16_le(data, 0) / 100
-    current = _uint16_le(data, 2) / 1000
+    battery_voltage = _uint16_le(data, 0) / 100
+    panel_voltage = _uint16_le(data, 2) / 100
+    current = _uint16_le(data, 4) / 10
 
     return {
-        "solar_voltage": voltage,
+        "solar_voltage": battery_voltage,
+        "solar_panel_voltage": panel_voltage,
         "solar_current": current,
         # Power is calculated from the two confirmed live measurements.
-        "solar_power": round(voltage * current, 1),
+        "solar_power": round(battery_voltage * current, 1),
         "solar_status_code": data[9],
-        "solar_total_charge": _uint16_le(data, 13),
-        "solar_total_energy": _uint16_le(data, 15) / 100,
         "solar_raw": data.hex(" ").upper(),
     }
 
@@ -80,6 +93,14 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.entry = entry
         self.address = entry.data["address"]
+        self._store: Store[dict[str, float]] = Store(
+            hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.solar_yield"
+        )
+        self._solar_total_charge = 0.0
+        self._solar_total_energy = 0.0
+        self._last_sample_time: float | None = None
+        self._last_current: float | None = None
+        self._last_power: float | None = None
 
         super().__init__(
             hass,
@@ -87,6 +108,61 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             name=f"{DOMAIN}_{self.address}",
             update_interval=timedelta(seconds=SCAN_INTERVAL),
         )
+
+    async def async_load_solar_yield(self) -> None:
+        """Restore the user-resettable solar counters after a restart."""
+        stored = await self._store.async_load()
+        if stored:
+            self._solar_total_charge = float(stored.get("charge_ah", 0.0))
+            self._solar_total_energy = float(stored.get("energy_wh", 0.0))
+
+    def _stored_solar_yield(self) -> dict[str, float]:
+        return {
+            "charge_ah": self._solar_total_charge,
+            "energy_wh": self._solar_total_energy,
+        }
+
+    def _update_solar_yield(self, result: dict[str, Any]) -> None:
+        """Integrate current and power, ignoring implausibly long data gaps."""
+        now = time.monotonic()
+        current = max(0.0, float(result["solar_current"]))
+        power = max(0.0, float(result["solar_power"]))
+
+        if self._last_sample_time is not None:
+            elapsed = now - self._last_sample_time
+            if 0 < elapsed <= MAX_INTEGRATION_GAP_SECONDS:
+                previous_current = self._last_current or 0.0
+                previous_power = self._last_power or 0.0
+                hours = elapsed / 3600
+                self._solar_total_charge += (
+                    previous_current + current
+                ) / 2 * hours
+                self._solar_total_energy += (
+                    previous_power + power
+                ) / 2 * hours
+
+        self._last_sample_time = now
+        self._last_current = current
+        self._last_power = power
+        result["solar_total_charge"] = round(self._solar_total_charge, 3)
+        result["solar_total_energy"] = round(self._solar_total_energy, 2)
+        self._store.async_delay_save(self._stored_solar_yield, 30)
+
+    async def async_reset_solar_yield(self) -> None:
+        """Reset both calculated counters and persist the reset immediately."""
+        self._solar_total_charge = 0.0
+        self._solar_total_energy = 0.0
+        self._last_sample_time = time.monotonic()
+
+        if self.data:
+            self._last_current = max(0.0, float(self.data.get("solar_current", 0.0)))
+            self._last_power = max(0.0, float(self.data.get("solar_power", 0.0)))
+            updated = dict(self.data)
+            updated["solar_total_charge"] = 0.0
+            updated["solar_total_energy"] = 0.0
+            self.async_set_updated_data(updated)
+
+        await self._store.async_save(self._stored_solar_yield())
 
     async def _async_update_data(self) -> dict[str, Any]:
         ble_device = bluetooth.async_ble_device_from_address(
@@ -164,6 +240,7 @@ class VotronicCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     f"(MAIN={main_event.is_set()}, SOLAR={solar_event.is_set()})"
                 ) from err
 
+            self._update_solar_yield(result)
             return result
 
         except BleakError as err:
