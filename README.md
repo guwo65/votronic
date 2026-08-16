@@ -1,7 +1,8 @@
 # votronic
 HA-Integration für den Votronic Bluetooth Connector S-BC
 
-In Bearbeitung —  funktionsfähig - Sensorwertzuordnungen müssen im laufenden Betrieb noch überprüft werden.
+In Bearbeitung —  funktionsfähig - Sensorwertzuordnungen überprüft, Bedeutung des Solarstaus unbekannt
+Nur read, Der Reset-button setzt nur die HA-Werte auf 0, im Solar- und Batteriecomputer bleiben sie bestehen.
 
 Download in HACS: guwo65/votronic
 
@@ -30,4 +31,6 @@ guwo65/votronic/ (Hauptverzeichnis)
         ├── config_flow.py
         ├── coordinator.py
         ├── sensor.py
+				├── button.py
         ├── bluez_agent.py
+        ├── INSTALLATION.txt
