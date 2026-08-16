@@ -1,0 +1,18 @@
+Votronic Energy Monitor 0.5.1
+
+1. Entpacke die Dateien in:
+   /config/custom_components/votronic/
+
+2. Home Assistant vollständig neu starten.
+
+Neue bzw. korrigierte Entitäten:
+- Solar voltage: Batteriespannung am Solarregler
+- Solar panel voltage: Modulspannung
+- Solar current: Solarstrom
+- Solar power: Batteriespannung x Solarstrom
+- Solar yield since reset: berechnete Ah seit dem letzten Reset
+- Solar energy since reset: berechnete Wh seit dem letzten Reset
+- Reset solar yield: setzt Ah und Wh gemeinsam auf 0
+
+Die Zähler werden gespeichert und überstehen einen Neustart. Datenlücken von
+mehr als 60 Sekunden werden nicht hochgerechnet.
