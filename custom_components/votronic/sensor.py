@@ -18,6 +18,7 @@ from homeassistant.const import (
     UnitOfPower,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import VotronicCoordinator
@@ -72,6 +73,14 @@ SENSORS = (
         suggested_display_precision=2,
     ),
     VotronicSensorDescription(
+        key="solar_panel_voltage", data_key="solar_panel_voltage",
+        name="Solar panel voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        device_class=SensorDeviceClass.VOLTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+    ),
+    VotronicSensorDescription(
         key="solar_current", data_key="solar_current", name="Solar current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.CURRENT,
@@ -86,19 +95,28 @@ SENSORS = (
         suggested_display_precision=1,
     ),
     VotronicSensorDescription(
-        key="solar_total_charge", data_key="solar_total_charge", name="Solar total charge",
+        key="solar_total_charge", data_key="solar_total_charge",
+        name="Solar yield since reset",
         native_unit_of_measurement=AMPERE_HOUR,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     VotronicSensorDescription(
-        key="solar_total_energy", data_key="solar_total_energy", name="Solar total energy",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        key="solar_total_energy", data_key="solar_total_energy",
+        name="Solar energy since reset",
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
-        suggested_display_precision=2,
+        suggested_display_precision=1,
     ),
     VotronicSensorDescription(
         key="solar_status_code", data_key="solar_status_code", name="Solar status code",
+    ),
+    VotronicSensorDescription(
+        key="solar_raw",
+        data_key="solar_raw",
+        name="Solar raw data",
+        icon="mdi:code-tags",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 
