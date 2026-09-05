@@ -1,4 +1,4 @@
-# votronic
+## votronic
 HA-Integration für den Votronic Bluetooth Connector S-BC
 
 In Bearbeitung —  funktionsfähig - Sensorwertzuordnungen überprüft, Bedeutung des Solarstaus unbekannt
