@@ -1,4 +1,4 @@
-# votronic
+## votronic
 HA-Integration für den Votronic Bluetooth Connector S-BC
 
 In Bearbeitung —  funktionsfähig - Sensorwertzuordnungen überprüft, Bedeutung des Solarstaus unbekannt
@@ -34,3 +34,17 @@ guwo65/votronic/ (Hauptverzeichnis)
 				├── button.py
         ├── bluez_agent.py
         ├── INSTALLATION.txt
+
+## Haftungsausschluss
+
+Dieses Projekt ist ein unabhängiges Community-Projekt.
+
+Es steht in keiner Verbindung zu Votronic Elektronik-Systeme GmbH oder zu Herstellern der verwendeten Steuerelektronik und wird von diesen weder unterstützt noch bestätigt.
+
+Die Nutzung erfolgt auf eigene Verantwortung.
+
+Insbesondere bei elektrischen Verbrauchern sollten Schaltvorgänge zunächst unter Aufsicht an der eigenen Installation geprüft werden.
+
+## Lizenz
+
+Dieses Projekt steht unter der **MIT License**. Siehe [`LICENSE`](LICENSE).
